@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { ArrowUp, ArrowDown, MoveVertical } from "lucide-react";
 import AttendanceCard from "./AttendanceCard";
 import {
   Select,
@@ -56,6 +57,11 @@ const Attendance = ({
   subjectCacheStatus,
   setSubjectCacheStatus
 }) => {
+
+  const [sortConfig, setSortConfig] = useState({
+    key: "", // "name" | "total" | "attendance"
+    direction: "", // "asc" | "desc"
+  });
 
   useEffect(() => {
     const fetchSemesters = async () => {
@@ -208,8 +214,15 @@ const Attendance = ({
             classesNeeded: classesNeeded > 0 ? classesNeeded : 0,
             classesCanMiss: classesCanMiss > 0 ? classesCanMiss : 0,
           };
-        },
-      )) ||
+        })
+        .sort((a, b) => {
+          const key = sortConfig.key;
+          const dir = sortConfig.direction === "asc" ? 1 : -1;
+          if (key === "name") return dir * a.name.localeCompare(b.name);
+          if (key === "total") return dir * (a.attendance.total - b.attendance.total);
+          if (key === "attendance") return dir * (a.combined - b.combined);
+          return 0;
+        })) ||
     [];
 
   const fetchSubjectAttendance = async (subject) => {
@@ -349,16 +362,56 @@ const Attendance = ({
                 {attendanceData[selectedSem.registration_id].error}
               </div>
             ) : (
-              subjects.map((subject) => (
-                <AttendanceCard
-                  key={subject.name}
-                  subject={subject}
-                  selectedSubject={selectedSubject}
-                  setSelectedSubject={setSelectedSubject}
-                  subjectAttendanceData={subjectAttendanceData}
-                  fetchSubjectAttendance={fetchSubjectAttendance}
-                />
-              ))
+              <>
+                <div className="flex items-center gap-6 py-1 pr-5">
+                  {[
+                    { key: "name", label: "Sort by Subject" },
+                    { key: "total", label: "Sort by Total Classes" },
+                    { key: "attendance", label: "Sort by Attendance %" },
+                  ].map((col, index) => {
+                    const isActive = sortConfig.key === col.key;
+                    const isAsc = sortConfig.direction === "asc";
+
+                    return (
+                      <button
+                        key={col.key}
+                        onClick={() =>
+                          setSortConfig((prev) => ({
+                            key: col.key,
+                            direction:
+                              prev.key === col.key && prev.direction === "asc" ? "desc" : "asc",
+                          }))
+                        }
+                        className={`flex items-center justify-center w-8 h-8 bg-[#242a32] rounded-md hover:bg-[#323a45] transition
+          ${index === 1 ? "ml-auto" : ""}`}
+                        title={col.label}
+                      >
+                        {isActive ? (
+                          isAsc ? (
+                            <ArrowUp className="w-4 h-4 text-white" />
+                          ) : (
+                            <ArrowDown className="w-4 h-4 text-white" />
+                          )
+                        ) : (
+                          <MoveVertical className="w-4 h-4 text-gray-400" />
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+
+
+                {subjects.map((subject) => (
+                  <AttendanceCard
+                    key={subject.name}
+                    subject={subject}
+                    selectedSubject={selectedSubject}
+                    setSelectedSubject={setSelectedSubject}
+                    subjectAttendanceData={subjectAttendanceData}
+                    fetchSubjectAttendance={fetchSubjectAttendance}
+                  />
+                ))}
+              </>
             )}
           </TabsContent>
 
